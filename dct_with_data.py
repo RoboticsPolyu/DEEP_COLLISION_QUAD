@@ -156,7 +156,7 @@ if __name__ == "__main__":
     num_epochs = 20
     epoch_losses = train(model, train_loader, criterion, optimizer, num_epochs)
     
-    torch.save(model.state_dict(), 'model_parameters.pth')
+    torch.save(model.state_dict(), 'model/model_parameters.pth')
     
     plt.figure(figsize=(3.7, 3.0))
     set_dense_grid(plt)

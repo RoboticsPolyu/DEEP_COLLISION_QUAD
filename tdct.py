@@ -110,7 +110,7 @@ for epoch in range(num_epochs):
     test_loss, test_accuracy = test(model, test_loader, criterion, device)
     print(f'Epoch {epoch + 1}/{num_epochs}, Train Loss: {train_loss:.4f}, Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
 
-torch.save(model.state_dict(), 'model_parameters.pth')
+torch.save(model.state_dict(), 'model/model_parameters.pth')
 
 # plt.figure(figsize=(3.7, 3.0))
 # # Plot the training loss
