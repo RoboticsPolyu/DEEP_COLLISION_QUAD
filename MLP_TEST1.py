@@ -32,16 +32,19 @@ def find_index(time_sequence, time0):
             return index
     return -1  # Return -1 if no such time is found
 
-# File paths (assuming these exist in your environment)
+# File paths (existing)
 file      = 'dataset/Data/control_2024-12-04-15-29-53.txt'
 pose_file = 'dataset/Data/pose_2024-12-04-15-29-53.txt'
 imu_file  = 'dataset/Data/imu_2024-12-04-15-29-53.txt'
 
-file1 = 'Data/control_2024-12-04-15-09-00.txt'
-pose_file1 = 'Data/pose_2024-12-04-15-09-00.txt'
-imu_file1 = 'Data/imu_2024-12-04-15-09-00.txt'
+# New file paths
+file1 = 'dataset/Data/control_2024-12-04-15-09-00.txt'
+pose_file1 = 'dataset/Data/pose_2024-12-04-15-09-00.txt'
+imu_file1 = 'dataset/Data/imu_2024-12-04-15-09-00.txt'
 
 actuator_t_delay = 0.05
+
+# Load and process existing data
 data = np.loadtxt(file)
 time = data[:,0] 
 time_begin = time[0]
@@ -70,27 +73,9 @@ q_y    = pose_data[:,5]
 q_z    = pose_data[:,6]
 q_w    = pose_data[:,7]
 
-time_duration = (time[1:-1] - time[0:-2])/1e6
-
 imu_data = np.loadtxt(imu_file)
 imu_time = imu_data[:,0] 
 imu_time = (imu_time - time_begin) / 1e9
-
-collision_type = [3,  3,   3,   1,    1,    1,     2,     2,     2,     2,     3,   3,   3,   3,    3,    2,     2,     2,     2,     2,    1,      1,      1,      1,      1,     1,       3,   3,   3]
-collision_time = [93, 149, 161, 23.5, 29.5, 36.43, 49.44, 52.68, 60.30, 65.23, 2.5, 5.0, 6.5, 10.0, 17.5, 67.73, 71.73, 75.66, 80.67, 85.6, 103.17, 111.87, 126.54, 142.09, 155.7, 168.024, 119, 134, 91.8]
-
-collision_type1 = [1,     1,     1,     1,     1,     1,     2,      2,      2,      2,      2,   2]
-collision_time1 = [21.35, 39.53, 55.60, 75.41, 88.92, 94.05, 145.24, 158.60, 185.36, 195.84, 200, 202]
-
-
-sample_index = 5
-duration = 2.0
-offset   = 0.05
-start_time = collision_time[sample_index] - duration + offset
-end_time   = collision_time[sample_index] + offset
-
-start_index = find_index(imu_time, start_time)
-end_index   = find_index(imu_time, end_time)
 
 angular_velocity_x = imu_data[:,1]
 angular_velocity_y = imu_data[:,2]
@@ -110,6 +95,96 @@ linear_acceleration_x = signal.filtfilt(b2, a2, linear_acceleration_x)
 linear_acceleration_y = signal.filtfilt(b2, a2, linear_acceleration_y)
 linear_acceleration_z = signal.filtfilt(b2, a2, linear_acceleration_z)
 
+# Load and process new data
+new_data = np.loadtxt(file1)
+new_time = new_data[:, 0]
+new_time_begin = new_time[0]
+new_time = (new_time - new_time_begin)/1e9 + actuator_t_delay
+
+new_bodyrate_x = new_data[:, 1]
+new_bodyrate_y = new_data[:, 2]
+new_bodyrate_z = new_data[:, 3]
+new_thrust = new_data[:, 4]
+
+# Apply filter to new control data
+new_thrust = signal.filtfilt(b3, a3, new_thrust)
+new_bodyrate_x = signal.filtfilt(b3, a3, new_bodyrate_x)
+new_bodyrate_y = signal.filtfilt(b3, a3, new_bodyrate_y)
+new_bodyrate_z = signal.filtfilt(b3, a3, new_bodyrate_z)
+
+# Process new pose data
+new_pose_data = np.loadtxt(pose_file1)
+new_pose_time = new_pose_data[:, 0]
+new_pose_time = (new_pose_time - new_time_begin)/1e9
+new_pose_x = new_pose_data[:, 1]
+new_pose_y = new_pose_data[:, 2]
+new_pose_z = new_pose_data[:, 3]
+new_q_x = new_pose_data[:, 4]
+new_q_y = new_pose_data[:, 5]
+new_q_z = new_pose_data[:, 6]
+new_q_w = new_pose_data[:, 7]
+
+# Process new IMU data
+new_imu_data = np.loadtxt(imu_file1)
+new_imu_time = new_imu_data[:, 0]
+new_imu_time = (new_imu_time - new_time_begin) / 1e9
+
+new_angular_velocity_x = new_imu_data[:, 1]
+new_angular_velocity_y = new_imu_data[:, 2]
+new_angular_velocity_z = new_imu_data[:, 3]
+
+new_linear_acceleration_x = new_imu_data[:, 4]
+new_linear_acceleration_y = new_imu_data[:, 5]
+new_linear_acceleration_z = new_imu_data[:, 6]
+
+# Apply filter to new IMU data
+new_angular_velocity_x = signal.filtfilt(b2, a2, new_angular_velocity_x)
+new_angular_velocity_y = signal.filtfilt(b2, a2, new_angular_velocity_y)
+new_angular_velocity_z = signal.filtfilt(b2, a2, new_angular_velocity_z)
+
+new_linear_acceleration_x = signal.filtfilt(b2, a2, new_linear_acceleration_x)
+new_linear_acceleration_y = signal.filtfilt(b2, a2, new_linear_acceleration_y)
+new_linear_acceleration_z = signal.filtfilt(b2, a2, new_linear_acceleration_z)
+
+# Combine data arrays
+time = np.concatenate([time, new_time])
+thrust = np.concatenate([thrust, new_thrust])
+bodyrate_x = np.concatenate([bodyrate_x, new_bodyrate_x])
+bodyrate_y = np.concatenate([bodyrate_y, new_bodyrate_y])
+bodyrate_z = np.concatenate([bodyrate_z, new_bodyrate_z])
+
+pose_time = np.concatenate([pose_time, new_pose_time])
+pose_x = np.concatenate([pose_x, new_pose_x])
+pose_y = np.concatenate([pose_y, new_pose_y])
+pose_z = np.concatenate([pose_z, new_pose_z])
+q_x = np.concatenate([q_x, new_q_x])
+q_y = np.concatenate([q_y, new_q_y])
+q_z = np.concatenate([q_z, new_q_z])
+q_w = np.concatenate([q_w, new_q_w])
+
+imu_time = np.concatenate([imu_time, new_imu_time])
+angular_velocity_x = np.concatenate([angular_velocity_x, new_angular_velocity_x])
+angular_velocity_y = np.concatenate([angular_velocity_y, new_angular_velocity_y])
+angular_velocity_z = np.concatenate([angular_velocity_z, new_angular_velocity_z])
+linear_acceleration_x = np.concatenate([linear_acceleration_x, new_linear_acceleration_x])
+linear_acceleration_y = np.concatenate([linear_acceleration_y, new_linear_acceleration_y])
+linear_acceleration_z = np.concatenate([linear_acceleration_z, new_linear_acceleration_z])
+
+# Collision information for both datasets
+collision_type = [3,  3,   3,   1,    1,    1,     2,     2,     2,     2,     3,   3,   3,   3,    3,    2,     2,     2,     2,     2,    1,      1,      1,      1,      1,     1,       3,   3,   3]
+collision_time = [93, 149, 161, 23.5, 29.5, 36.43, 49.44, 52.68, 60.30, 65.23, 2.5, 5.0, 6.5, 10.0, 17.5, 67.73, 71.73, 75.66, 80.67, 85.6, 103.17, 111.87, 126.54, 142.09, 155.7, 168.024, 119, 134, 91.8]
+
+collision_type1 = [3, 3,  3,  3,  3,   3,   3,   3,   3,   3,   1,     1,     1,     1,     1,     1,     2,      2,      2,      2,      2,   2]
+collision_time1 = [7, 28, 48, 65, 110, 120, 130, 135, 167, 174, 21.35, 39.53, 55.60, 75.41, 88.92, 94.05, 145.24, 158.60, 185.36, 195.84, 200, 202]
+
+# Combine collision data
+all_collision_type = collision_type + collision_type1
+all_collision_time = collision_time + [t + time_begin/1e9 for t in collision_time1]  # Adjust new times if necessary
+
+sample_index = 5
+duration = 2.0
+offset   = 0.05
+
 # Custom Dataset for MLP
 class CollisionDataset(Dataset):
     def __init__(self, X, y):
@@ -125,9 +200,9 @@ class CollisionDataset(Dataset):
 # Prepare data for all collisions with interpolation
 X_data = []
 y_data = []
-for i in range(len(collision_time)):
-    start_time = collision_time[i] - duration + offset
-    end_time   = collision_time[i] + offset
+for i in range(len(all_collision_time)):
+    start_time = all_collision_time[i] - duration + offset
+    end_time   = all_collision_time[i] + offset
     start_index = find_index(imu_time, start_time)
     end_index   = find_index(imu_time, end_time)
     
@@ -167,7 +242,7 @@ for i in range(len(collision_time)):
             raise ValueError(f"Expected {fixed_features} features but got {len(X)}")
         
         X_data.append(X)
-        y_data.append(collision_type[i] - 1)  # Adjust labels to start from 0 for classification
+        y_data.append(all_collision_type[i] - 1)  # Adjust labels to start from 0 for classification
 
 # Convert lists to numpy arrays, then to PyTorch tensors
 X_data = np.array(X_data)
@@ -202,7 +277,7 @@ class CollisionClassifierMLP(nn.Module):
         return x
 
 # Initialize the model, loss function, and optimizer
-num_classes = len(set(collision_type))
+num_classes = len(set(all_collision_type))
 input_size = fixed_features  # This should match your flattened input size
 model = CollisionClassifierMLP(num_classes, input_size)
 criterion = nn.CrossEntropyLoss()
@@ -258,7 +333,7 @@ for index, true_label, predicted_label in misclassified_predictions:
 
     sample = X_data[actual_index].reshape(-1, 7)  # Reshape back to (time_steps, features)
     sample_len = sample.shape[0]
-    sample_start = find_index(imu_time, collision_time[actual_index] - duration + offset)
+    sample_start = find_index(imu_time, all_collision_time[actual_index] - duration + offset)
     sample_end = sample_start + sample_len
 
     plt.figure(figsize=(7.4, 5.4))  # Double size to accommodate both plots side by side
